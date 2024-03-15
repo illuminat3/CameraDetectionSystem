@@ -1,25 +1,59 @@
 import cv2
-from datetime import datetime
 import os
+import datetime
 
 class Camera:
     def __init__(self):
-        self.images_dir = "./images"
-        os.makedirs(self.images_dir, exist_ok=True)
         self.cap = cv2.VideoCapture(0)
-        if not self.cap.isOpened():
-            print("Error: Could not open camera.")
-            exit()
+        self.is_recording = False
+        self.video_writer = None
+        self.video_filepath = ""
+
+        self.images_dir = "./images"
+        self.videos_dir = "./videos"
+        os.makedirs(self.images_dir, exist_ok=True)
+        os.makedirs(self.videos_dir, exist_ok=True)
 
     def TakePhoto(self):
         ret, frame = self.cap.read()
         if ret:
-            datetime_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")[:-3]
-            image_path = os.path.join(self.images_dir, f"image_{datetime_str}.png")
-            cv2.imwrite(image_path, frame)
-            print(f"Image saved as {image_path}")
+            filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.jpg")
+            filepath = os.path.join(self.images_dir, filename)
+            cv2.imwrite(filepath, frame)
+            print(f"Photo taken and saved at {filepath}")
+            return filepath
         else:
-            print("Error: Could not capture image.")
-
-    def cleanup(self):
+            print("Failed to capture photo")
         self.cap.release()
+        return None
+        
+
+    def StartRecording(self):
+        if self.is_recording:
+            print("Recording is already started.")
+            return
+
+        self.cap = cv2.VideoCapture(0)
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.avi")
+        filepath = os.path.join(self.videos_dir, filename)
+        self.video_filepath = filepath
+        frame_width = int(self.cap.get(3))
+        frame_height = int(self.cap.get(4))
+        self.video_writer = cv2.VideoWriter(filepath, fourcc, 60.0, (frame_width, frame_height))
+
+        self.is_recording = True
+        print(f"Started recording.")
+
+    def StopRecording(self):
+        if not self.is_recording:
+            print("Recording is not started or already stopped.")
+            return None
+
+        self.is_recording = False
+        self.cap.release()
+        self.video_writer.release()
+        cv2.destroyAllWindows()
+        print("Recording stopped.")
+        return self.video_filepath
+
